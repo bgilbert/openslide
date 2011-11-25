@@ -227,6 +227,16 @@ const char *openslide_get_error(openslide_t *osr);
 #define OPENSLIDE_PROPERTY_NAME_QUICKHASH1 "openslide.quickhash-1"
 
 /**
+ * The name of the property containing the quickhash-1 calculation time.
+ */
+#define OPENSLIDE_PROPERTY_NAME_QUICKHASH1_TIME "openslide.quickhash-1-time"
+
+/**
+ * The name of the property containing the openslide_open time.
+ */
+#define OPENSLIDE_PROPERTY_NAME_OPEN_TIME "openslide.open-time"
+
+/**
  * The name of the property containing a slide's background color, if any.
  * It is represented as an RGB hex triplet.
  */

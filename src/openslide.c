@@ -245,6 +245,7 @@ openslide_t *openslide_open(const char *filename) {
   g_assert(openslide_was_dynamically_loaded);
 
   // alloc memory
+  GTimer *timer = g_timer_new();
   openslide_t *osr = g_slice_new0(openslide_t);
   osr->properties = g_hash_table_new_full(g_str_hash, g_str_equal,
 					  g_free, g_free);
@@ -256,6 +257,7 @@ openslide_t *openslide_open(const char *filename) {
   if (!try_all_formats(osr, filename, &quickhash1)) {
     // failure
     openslide_close(osr);
+    g_timer_destroy(timer);
     return NULL;
   }
 
@@ -287,6 +289,7 @@ openslide_t *openslide_open(const char *filename) {
 		osr->downsamples[i], osr->downsamples[i - 1]);
       openslide_close(osr);
       _openslide_hash_destroy(quickhash1);
+      g_timer_destroy(timer);
       return NULL;
     }
   }
@@ -296,6 +299,9 @@ openslide_t *openslide_open(const char *filename) {
     g_hash_table_insert(osr->properties,
 			g_strdup(OPENSLIDE_PROPERTY_NAME_QUICKHASH1),
 			g_strdup(_openslide_hash_get_string(quickhash1)));
+    g_hash_table_insert(osr->properties,
+			g_strdup(OPENSLIDE_PROPERTY_NAME_QUICKHASH1_TIME),
+			g_strdup_printf("%f", _openslide_hash_get_time(quickhash1)));
     _openslide_hash_destroy(quickhash1);
   }
 
@@ -314,6 +320,10 @@ openslide_t *openslide_open(const char *filename) {
 			g_strdup_printf(_OPENSLIDE_PROPERTY_NAME_TEMPLATE_LAYER_HEIGHT, i),
 			g_strdup_printf("%" G_GINT64_FORMAT, h));
   }
+  g_hash_table_insert(osr->properties,
+			g_strdup(OPENSLIDE_PROPERTY_NAME_OPEN_TIME),
+			g_strdup_printf("%f", g_timer_elapsed(timer, NULL)));
+  g_timer_destroy(timer);
 
   // fill in names
   osr->associated_image_names = strv_from_hashtable_keys(osr->associated_images);

@@ -46,8 +46,9 @@ bool _openslide_hash_file_part(struct _openslide_hash *hash,
 			       const char *filename,
 			       int64_t offset, int64_t size);
 
-// accessor
+// accessors
 const char *_openslide_hash_get_string(struct _openslide_hash *hash);
+double _openslide_hash_get_time(struct _openslide_hash *hash);
 
 // destructor
 void _openslide_hash_destroy(struct _openslide_hash *hash);

@@ -82,11 +82,14 @@ static void checksum_free(SHA256_CTX *ctx)
 
 struct _openslide_hash {
   Checksum *checksum;
+  GTimer *timer;
 };
 
 struct _openslide_hash *_openslide_hash_quickhash1_create(void) {
   struct _openslide_hash *hash = g_slice_new(struct _openslide_hash);
   hash->checksum = checksum_new(CHECKSUM_SHA256);
+  hash->timer = g_timer_new();
+  g_timer_stop(hash->timer);
 
   return hash;
 }
@@ -96,21 +99,30 @@ void _openslide_hash_string(struct _openslide_hash *hash, const char *str) {
     return;
   }
 
+  g_timer_continue(hash->timer);
   Checksum *checksum = hash->checksum;
 
   const char *str_to_hash = str ? str : "";
   checksum_update(checksum,
 		  (const guchar *) str_to_hash,
 		  strlen(str_to_hash) + 1);
+  g_timer_stop(hash->timer);
 }
+
+static bool _do_openslide_hash_file_part(struct _openslide_hash *hash,
+			       const char *filename,
+			       int64_t offset, int64_t size);
 
 bool _openslide_hash_tiff_tiles(struct _openslide_hash *hash, TIFF *tiff) {
   g_assert(TIFFIsTiled(tiff));
+
+  g_timer_continue(hash->timer);
 
   // get tile sizes
   toff_t *sizes;
   if (TIFFGetField(tiff, TIFFTAG_TILEBYTECOUNTS, &sizes) == 0) {
     g_critical("Cannot get tile size");
+    g_timer_stop(hash->timer);
     return false;  // ok, haven't allocated anything yet
   }
 
@@ -118,6 +130,7 @@ bool _openslide_hash_tiff_tiles(struct _openslide_hash *hash, TIFF *tiff) {
   toff_t *offsets;
   if (TIFFGetField(tiff, TIFFTAG_TILEOFFSETS, &offsets) == 0) {
     g_critical("Cannot get offsets");
+    g_timer_stop(hash->timer);
     return false;  // ok, haven't allocated anything yet
   }
 
@@ -125,29 +138,49 @@ bool _openslide_hash_tiff_tiles(struct _openslide_hash *hash, TIFF *tiff) {
   ttile_t count = TIFFNumberOfTiles(tiff);
   const char *filename = TIFFFileName(tiff);
   for (ttile_t tile_no = 0; tile_no < count; tile_no++) {
-    if (!_openslide_hash_file_part(hash, filename, offsets[tile_no], sizes[tile_no])) {
+    if (!_do_openslide_hash_file_part(hash, filename, offsets[tile_no], sizes[tile_no])) {
+      g_timer_stop(hash->timer);
       return false;
     }
   }
 
+  g_timer_stop(hash->timer);
   return true;
 }
 
-
 bool _openslide_hash_file(struct _openslide_hash *hash, const char *filename) {
+  g_timer_continue(hash->timer);
+
   // determine size of file
   FILE *f = _openslide_fopen(filename, "rb");
-  g_return_val_if_fail(f, false);
+  if (!f) {
+    g_timer_stop(hash->timer);
+    return false;
+  }
   fseeko(f, 0, SEEK_END);
   int64_t size = ftello(f);
   fclose(f);
 
-  g_return_val_if_fail(size != -1, false);
+  if (size == -1) {
+    g_timer_stop(hash->timer);
+    return false;
+  }
 
-  return _openslide_hash_file_part(hash, filename, 0, size);
+  bool ret = _do_openslide_hash_file_part(hash, filename, 0, size);
+  g_timer_stop(hash->timer);
+  return ret;
 }
 
 bool _openslide_hash_file_part(struct _openslide_hash *hash,
+			       const char *filename,
+			       int64_t offset, int64_t size) {
+  g_timer_continue(hash->timer);
+  bool ret = _do_openslide_hash_file_part(hash, filename, offset, size);
+  g_timer_stop(hash->timer);
+  return ret;
+}
+
+static bool _do_openslide_hash_file_part(struct _openslide_hash *hash,
 			       const char *filename,
 			       int64_t offset, int64_t size) {
   FILE *f = _openslide_fopen(filename, "rb");
@@ -190,7 +223,12 @@ const char *_openslide_hash_get_string(struct _openslide_hash *hash) {
   return checksum_get_string(hash->checksum);
 }
 
+double _openslide_hash_get_time(struct _openslide_hash *hash) {
+  return g_timer_elapsed(hash->timer, NULL);
+}
+
 void _openslide_hash_destroy(struct _openslide_hash *hash) {
   checksum_free(hash->checksum);
+  g_timer_destroy(hash->timer);
   g_slice_free(struct _openslide_hash, hash);
 }

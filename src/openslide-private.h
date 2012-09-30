@@ -46,6 +46,13 @@
 
 #include <openjpeg.h>
 
+#if defined(_WIN32) && !defined(fseeko)
+/* The mingw32 (not mingw-w64) crt declares fseeko64/ftello64 but doesn't
+   #define fseeko/ftello. */
+#define fseeko fseeko64
+#define ftello ftello64
+#endif
+
 
 /* the associated image structure */
 struct _openslide_associated_image {

@@ -149,7 +149,21 @@ AC_CHECK_FUNCS([fcntl])
 # Only enable this on MinGW, since otherwise gcc will complain about an
 # unknown option whenever it produces any *other* warnings
 AS_CASE([$host],
-  [*-*-mingw32],   [CFLAG_MS_FORMAT=-Wno-pedantic-ms-format],
+  [*-*-mingw32], [
+    CFLAG_MS_FORMAT=-Wno-pedantic-ms-format
+
+    # But some older mingw32 will unconditionally choke on the option
+    AC_MSG_CHECKING([if compiler supports $CFLAG_MS_FORMAT])
+    old_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS $CFLAG_MS_FORMAT"
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([])], [
+      AC_MSG_RESULT([yes])
+    ], [
+      AC_MSG_RESULT([no])
+      CFLAG_MS_FORMAT=""
+    ])
+    CFLAGS="$old_CFLAGS"
+  ],
   [CFLAG_MS_FORMAT=""]
 )
 AC_SUBST([CFLAG_MS_FORMAT])

@@ -1,7 +1,7 @@
 /*
  *  OpenSlide, a library for reading whole slide image files
  *
- *  Copyright (c) 2007-2012 Carnegie Mellon University
+ *  Copyright (c) 2007-2013 Carnegie Mellon University
  *  Copyright (c) 2011 Google, Inc.
  *  All rights reserved.
  *
@@ -240,6 +240,7 @@ static void add_properties(GHashTable *ht, GKeyFile *kf,
 }
 
 static bool hamamatsu_vms_part2(openslide_t *osr,
+				int32_t level_count,
 				int num_jpegs, char **image_filenames,
 				int num_jpeg_cols,
 				FILE *optimisation_file,
@@ -253,8 +254,7 @@ static bool hamamatsu_vms_part2(openslide_t *osr,
     jpegs[i] = g_slice_new0(struct _openslide_jpeg_file);
   }
 
-  // init levels: base image + map
-  int32_t level_count = 2;
+  // init levels: base image, plus possibly map
   struct _openslide_jpeg_level **levels =
     g_new0(struct _openslide_jpeg_level *, level_count);
   for (int32_t i = 0; i < level_count; i++) {
@@ -315,16 +315,24 @@ static bool hamamatsu_vms_part2(openslide_t *osr,
     int32_t num_tiles_across = jp->w / jp->tw;
     int32_t num_tiles_down = jp->h / jp->th;
 
-    // because map file is last, ensure that all tw and th are the
-    // same for 0 through num_jpegs-2
+    // compute level
+    int32_t level;
+    if (level_count == 2 && i == num_jpegs - 1) {
+      // map (level 1)
+      level = 1;
+    } else {
+      // base (level 0)
+      level = 0;
+    }
+
+    // ensure that all tw and th are the same, except for map file
     //    g_debug("tile size: %d %d", tw, th);
     if (i == 0) {
       jpeg0_tw = jp->tw;
       jpeg0_th = jp->th;
       jpeg0_ta = num_tiles_across;
       jpeg0_td = num_tiles_down;
-    } else if (i != (num_jpegs - 1)) {
-      // not map file (still within level 0)
+    } else if (level == 0) {
       g_assert(jpeg0_tw != 0 && jpeg0_th != 0);
       if (jpeg0_tw != jp->tw || jpeg0_th != jp->th) {
         g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_BAD_DATA,
@@ -350,15 +358,6 @@ static bool hamamatsu_vms_part2(openslide_t *osr,
     }
 
     // accumulate into some of the fields of the levels
-    int32_t level;
-    if (i != num_jpegs - 1) {
-      // base (level 0)
-      level = 0;
-    } else {
-      // map (level 1)
-      level = 1;
-    }
-
     struct _openslide_jpeg_level *l = levels[level];
     int32_t file_x = 0;
     int32_t file_y = 0;
@@ -390,16 +389,16 @@ static bool hamamatsu_vms_part2(openslide_t *osr,
     int32_t level;
     int32_t file_x;
     int32_t file_y;
-    if (i != num_jpegs - 1) {
-      // base (level 0)
-      level = 0;
-      file_x = i % num_jpeg_cols;
-      file_y = i / num_jpeg_cols;
-    } else {
+    if (level_count == 2 && i == num_jpegs - 1) {
       // map (level 1)
       level = 1;
       file_x = 0;
       file_y = 0;
+    } else {
+      // base (level 0)
+      level = 0;
+      file_x = i % num_jpeg_cols;
+      file_y = i / num_jpeg_cols;
     }
 
     //g_debug("processing file %d %d %d", file_x, file_y, level);
@@ -562,6 +561,7 @@ bool _openslide_try_hamamatsu(openslide_t *osr, const char *filename,
   int num_images = 0;
   char **image_filenames = NULL;
 
+  int32_t level_count;
   int num_cols = -1;
   int num_rows = -1;
 
@@ -612,10 +612,26 @@ bool _openslide_try_hamamatsu(openslide_t *osr, const char *filename,
     goto DONE;
   }
 
+  // check for MapFile
+  char *mapfile = g_key_file_get_string(key_file, groupname, KEY_MAP_FILE,
+                                        NULL);
+  if (mapfile && *mapfile) {
+    // got it!  use as a second level
+    level_count = 2;
+  } else {
+    level_count = 1;
+  }
+
   // init the image filenames
   // this format has cols*rows image files, plus the map
-  num_images = (num_cols * num_rows) + 1;
+  num_images = (num_cols * num_rows) + (level_count - 1);
   image_filenames = g_new0(char *, num_images);
+
+  // store MapFile
+  if (level_count == 2) {
+    image_filenames[num_images - 1] = g_build_filename(dirname, mapfile, NULL);
+  }
+  g_free(mapfile);
 
   // hash in the key file
   if (!_openslide_hash_file(quickhash1, filename, err)) {
@@ -636,27 +652,15 @@ bool _openslide_try_hamamatsu(openslide_t *osr, const char *filename,
     add_properties(osr->properties, key_file, groupname);
   }
 
-  // extract MapFile
-  char *tmp;
-  tmp = g_key_file_get_string(key_file,
-			      groupname,
-			      KEY_MAP_FILE,
-			      NULL);
-  if (tmp && *tmp) {
-    char *map_filename = g_build_filename(dirname, tmp, NULL);
-    g_free(tmp);
-
-    image_filenames[num_images - 1] = map_filename;
-
-    // hash in the map file
-    if (!_openslide_hash_file(quickhash1, map_filename, err)) {
+  // hash in the map file
+  if (level_count == 2) {
+    if (!_openslide_hash_file(quickhash1, image_filenames[num_images - 1],
+                              err)) {
       goto DONE;
     }
   } else {
-    g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_BAD_DATA,
-                "Can't read map file");
-    g_free(tmp);
-    goto DONE;
+    // we have nothing small and unique for the quickhash, so bail
+    _openslide_hash_disable(quickhash1);
   }
 
   // now each ImageFile
@@ -764,10 +768,8 @@ bool _openslide_try_hamamatsu(openslide_t *osr, const char *filename,
   }
 
   // add macro image
-  tmp = g_key_file_get_string(key_file,
-			      groupname,
-			      KEY_MACRO_IMAGE,
-			      NULL);
+  char *tmp = g_key_file_get_string(key_file, groupname, KEY_MACRO_IMAGE,
+                                    NULL);
   if (tmp && *tmp) {
     char *macro_filename = g_build_filename(dirname, tmp, NULL);
     bool result = _openslide_add_jpeg_associated_image(osr ? osr->associated_images : NULL,
@@ -806,7 +808,7 @@ bool _openslide_try_hamamatsu(openslide_t *osr, const char *filename,
     }
 
     // do all the jpeg stuff
-    success = hamamatsu_vms_part2(osr,
+    success = hamamatsu_vms_part2(osr, level_count,
 				  num_images, image_filenames,
 				  num_cols,
 				  optimisation_file,

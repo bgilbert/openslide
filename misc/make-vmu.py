@@ -2,7 +2,7 @@
 #
 #  OpenSlide, a library for reading whole slide image files
 #
-#  Copyright (c) 2012 Carnegie Mellon University
+#  Copyright (c) 2012-2013 Carnegie Mellon University
 #  All rights reserved.
 #
 #  OpenSlide is free software: you can redistribute it and/or modify
@@ -64,24 +64,24 @@ class VmuLevel(object):
                             fh.write(struct.pack('<3h', *pix[0:3]))
 
 
-def make_vmu(in_path, out_base):
+def make_vmu(in_path, out_base, with_map=True):
     path_conf = out_base + '.vmu'
-    path_0 = out_base + '.l0'
-    path_1 = out_base + '.l1'
 
     with OpenSlide(in_path) as osr:
-        l0 = VmuLevel(osr, 0)
-        l1 = VmuLevel(osr, osr.get_best_level_for_downsample(32))
-        for i, l in enumerate([l0, l1]):
+        levels = [VmuLevel(osr, 0)]
+        if with_map:
+            levels.append(VmuLevel(osr, osr.get_best_level_for_downsample(32)))
+        level_paths = ['%s.l%d' % (out_base, i) for i in range(len(levels))]
+        for i, l in enumerate(levels):
             print 'Level %d: %d pixels/column' % (i, l.column_width)
-        l0.save(path_0)
-        l1.save(path_1)
+        for i, l in enumerate(levels):
+            l.save(level_paths[i])
 
     section = 'Uncompressed Virtual Microscope Specimen'
     conf = {
         'NoLayers': '1',
-        'ImageFile': path_0,
-        'MapFile': path_1,
+        'ImageFile': level_paths[0],
+        'MapFile': level_paths[1] if len(levels) > 1 else '',
         'BitsPerPixel': '36',
         'PixelOrder': 'RGB',
     }
@@ -96,7 +96,9 @@ def make_vmu(in_path, out_base):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print 'Usage: %s infile outbase' % sys.argv[0]
+    with_map = '-1' not in sys.argv
+    argv = [v for v in sys.argv if v != '-1']
+    if len(argv) != 3:
+        print 'Usage: %s [-1] infile outbase' % argv[0]
         sys.exit(1)
-    make_vmu(sys.argv[1], sys.argv[2])
+    make_vmu(argv[1], argv[2], with_map)

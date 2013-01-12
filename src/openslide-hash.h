@@ -47,6 +47,10 @@ bool _openslide_hash_file_part(struct _openslide_hash *hash,
 			       int64_t offset, int64_t size,
 			       GError **err);
 
+// disable, for formats without a small quantity of unique information
+// (use only if absolutely necessary)
+void _openslide_hash_disable(struct _openslide_hash *hash);
+
 // accessor
 const char *_openslide_hash_get_string(struct _openslide_hash *hash);
 

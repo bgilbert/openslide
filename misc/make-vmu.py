@@ -82,6 +82,7 @@ def make_vmu(in_path, out_base, with_map=True):
         'NoLayers': '1',
         'ImageFile': level_paths[0],
         'MapFile': level_paths[1] if len(levels) > 1 else '',
+        'MacroImage': '',
         'BitsPerPixel': '36',
         'PixelOrder': 'RGB',
     }

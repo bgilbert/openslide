@@ -17,6 +17,9 @@ jobs:
     steps:
     - name: Check out repo
       uses: actions/checkout@v2
+    # Use consistent Python version for tests
+    - name: Set up Python
+      uses: actions/setup-python@v2
     - name: Install dependencies
       run: |
         case "${{ matrix.os }}" in
@@ -50,11 +53,26 @@ jobs:
             glib
           ;;
         esac
+        python -m pip install --upgrade pip
+        pip install requests PyYAML
     - name: Build
       run: |
         autoreconf -i
         ./configure
         make -j4
+    - name: Cache pristine slides
+      uses: actions/cache@v2
+      with:
+        key: pristine
+        path: test/_slidedata/pristine
+    # Can't cache frozen tests because cache doesn't handle sparse files
+    - name: Unpack tests
+      run: |
+        cd test
+        ./driver unfreeze
+        ./driver unpack nonfrozen
+    - name: Test
+      run: cd test && ./driver run
     - name: Check exports
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: cd test && ./driver exports

@@ -231,7 +231,7 @@ jobs:
             *debian*|"")
                 if [ -n "${{ matrix.container }}" ]; then
                     # Debian container
-                    jpeg=libjpeg-dev
+                    jpeg=libjpeg62-turbo-dev
                 else
                     # Ubuntu, on host
                     jpeg=libjpeg-turbo8-dev

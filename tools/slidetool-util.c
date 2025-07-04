@@ -28,7 +28,17 @@
 struct output open_output(const char *filename) {
   struct output out;
   if (filename) {
+#ifdef _WIN32
+    g_autofree wchar_t *filename16 =
+      (wchar_t *) g_utf8_to_utf16(filename, -1, NULL, NULL, err);
+    if (filename16 == NULL) {
+      g_prefix_error(err, "Couldn't open %s: ", filename);
+      return NULL;
+    }
+    FILE *fp = _wfopen(filename16, L"wb");
+#else
     FILE *fp = fopen(filename, "wb");
+#endif
     if (!fp) {
       common_fail("Can't open %s for writing: %s", filename, g_strerror(errno));
     }

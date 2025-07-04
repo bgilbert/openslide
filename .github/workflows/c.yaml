@@ -333,6 +333,9 @@ jobs:
     name: Build (Windows)
     needs: primary
     runs-on: windows-2025
+    strategy:
+      matrix:
+        toolchain: [MinGW, clang-cl]
     defaults:
       run:
         shell: bash
@@ -354,6 +357,9 @@ jobs:
           scripts/vcpkg-install.sh
           pip install meson requests PyYAML
       - name: Build
+        env:
+          CC: ${{ matrix.toolchain == 'clang-cl' && 'clang-cl' || 'gcc' }}
+          WINDRES: ${{ matrix.toolchain == 'clang-cl' && 'llvm-rc' || 'windres' }}
         run: |
           if ! meson setup builddir --fatal-meson-warnings --werror; then
               cat builddir/meson-logs/meson-log.txt

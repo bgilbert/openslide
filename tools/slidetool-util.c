@@ -24,7 +24,9 @@
 #include "openslide-common.h"
 #include "slidetool.h"
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <io.h>
+#else
 #include <unistd.h>
 #endif
 

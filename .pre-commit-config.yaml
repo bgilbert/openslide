@@ -145,12 +145,13 @@ repos:
       #
       # Deprecated type   Replacement
       # off_t             int64_t
+      # ssize_t           int64_t
       - id: deny-prohibited-type
         name: Check for calls to prohibited types
         language: pygrep
         exclude: ^misc/
         types: [c]
-        entry: "(^|\\s)(off_t)\\s"
+        entry: "(^|\\s)(off_t|ssize_t)\\s"
 
       # Prevent use of functions with mandatory wrappers in OpenSlide.
       # Wrapper implementations can add "// ci-allow" on the same line to

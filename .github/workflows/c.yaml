@@ -365,7 +365,7 @@ jobs:
               cat builddir/meson-logs/meson-log.txt
               exit 1
           fi
-          ninja -C builddir
+          meson compile -C builddir -v
       - name: Check
         run: |
           trap "cat builddir/meson-logs/testlog.txt" EXIT

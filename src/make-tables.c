@@ -25,6 +25,10 @@
 #include <stdlib.h>
 #include <math.h>
 
+#ifdef _WIN32
+#include <errno.h>
+#endif
+
 static void fail(const char *fmt, ...) {
   va_list ap;
 
@@ -84,7 +88,21 @@ int main(int argc, char **argv) {
   }
 
   // open file
+#ifdef _WIN32
+  size_t count = mbstowcs(NULL, argv[1], 0);
+  if (count == (size_t) -1) {
+    fail("Couldn't convert '%s'", argv[1]);
+  }
+  wchar_t *path16 = malloc(count * sizeof(wchar_t));
+  if (mbstowcs(path16, argv[1], count) == (size_t) -1) {
+    free(path16);
+    fail("Couldn't convert '%s'", argv[1]);
+  }
+  FILE *f = _wfopen(path16, L"w");
+  free(path16);
+#else
   FILE *f = fopen(argv[1], "w");
+#endif
   if (!f) {
     fail("Couldn't create %s", argv[1]);
   }

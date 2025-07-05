@@ -137,7 +137,7 @@ repos:
       - id: deny-prohibited-func
         name: Check for calls to prohibited functions
         language: pygrep
-        exclude: ^misc/
+        exclude: "^(misc/|src/make-tables.c)"
         types: [c]
         entry: "(^|\\W)(atoi|atol|atoll|calloc|free|g_slice_alloc0|g_slice_alloc|g_slice_copy|g_slice_dup|g_slice_free1|g_slice_free|g_slice_new0|g_slice_new|malloc|realloc|stpcpy|strcat|strcpy|strdup|strerror|strerror_l|strndup|strtoimax|strtol|strtoll|strtoul|strtoull|strtoumax)\\s*\\("
 

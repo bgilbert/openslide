@@ -75,6 +75,17 @@ add_project_arguments(
   '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_MIN_REQUIRED',
   language : 'c',
 )
+if host_machine.system() == 'windows'
+  add_project_arguments(
+    '-D_CRT_SECURE_NO_WARNINGS',
+    language : 'c',
+  )
+  add_project_arguments(
+    '-D_CRT_SECURE_NO_WARNINGS',
+    language : 'c',
+    native : true,
+  )
+endif
 add_project_link_arguments(
   cc.get_supported_link_arguments('-Wl,--no-undefined'),
   language : 'c',

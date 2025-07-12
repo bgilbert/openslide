@@ -170,10 +170,6 @@ dicom_dep = dependency(
   fallback : ['libdicom', 'libdicom_dep'],
   version : '>=1.2.0',
 )
-valgrind_dep = dependency(
-  'valgrind',
-  required : false,
-)
 
 # Dependency checks
 if jpeg_dep.type_name() != 'internal' and not cc.has_function(
@@ -191,9 +187,6 @@ if tiff_dep.type_name() == 'internal' or cc.has_function(
   # libtiff
   conf.set('HAVE_TIFF_LOG_CALLBACKS', 1)
   feature_flags += 'tiff-log-callbacks'
-endif
-if valgrind_dep.found()
-  conf.set('HAVE_VALGRIND', 1)
 endif
 
 if glib_dep.type_name() != 'internal'
@@ -264,14 +257,8 @@ if get_option('_sanitize')
   )
 endif
 
-# config.h
-configure_file(
-  output : 'config.h',
-  configuration : conf,
-)
-config_h_include = include_directories('.')
-
 # Subdirs
+config_h_include = include_directories('.')
 subdir('src')
 subdir('common')
 subdir('tools')
@@ -282,3 +269,9 @@ endif
 if not get_option('doc').disabled()
   subdir('doc')
 endif
+
+# config.h
+configure_file(
+  output : 'config.h',
+  configuration : conf,
+)

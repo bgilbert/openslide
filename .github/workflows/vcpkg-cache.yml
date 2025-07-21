@@ -14,7 +14,10 @@ concurrency: vcpkg-cache
 jobs:
   vcpkg:
     name: Cache
-    runs-on: windows-2025
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        runner: [windows-2025, windows-11-arm]
     steps:
       - name: Check out repo
         uses: actions/checkout@v4

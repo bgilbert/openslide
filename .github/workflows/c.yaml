@@ -332,11 +332,15 @@ jobs:
   windows-build:
     name: Build
     needs: primary
-    runs-on: windows-2025
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        platform: [Windows]  # cosmetic
+        runner: [windows-2025, windows-11-arm]
         toolchain: [MinGW, clang-cl]
+        exclude:
+          # MinGW GCC in ARM image is currently x86_64
+          - runner: windows-11-arm
+            toolchain: MinGW
     defaults:
       run:
         shell: bash
@@ -362,7 +366,11 @@ jobs:
           CC: ${{ matrix.toolchain == 'clang-cl' && 'clang-cl' || 'gcc' }}
           WINDRES: ${{ matrix.toolchain == 'clang-cl' && 'llvm-rc' || 'windres' }}
         run: |
-          if ! meson setup builddir --fatal-meson-warnings --werror; then
+          if ! [[ "${{ matrix.runner }}" =~ -arm ]]; then
+              # "WARNING: CMake Toolchain: Failed to determine CMake compilers state"
+              fatal=--fatal-meson-warnings
+          fi
+          if ! meson setup builddir $fatal --werror; then
               cat builddir/meson-logs/meson-log.txt
               exit 1
           fi

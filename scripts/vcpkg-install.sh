@@ -24,11 +24,18 @@ nuget setapikey "${GITHUB_TOKEN}" -Source "${FEED_URL}"
 
 ( cd "${VCPKG_INSTALLATION_ROOT}" && git pull )
 
+if vcpkg x-check-support libdicom 2>&1 | grep -q 'is supported'; then
+    libdicom=libdicom
+else
+    # no libdicom package on this arch, but we can install its deps
+    libdicom=uthash
+fi
+
 vcpkg install \
     pkgconf \
     cairo \
     glib \
-    libdicom \
+    $libdicom \
     libjpeg-turbo \
     libpng \
     libxml2 \
@@ -39,7 +46,12 @@ vcpkg install \
     zstd
 
 if [ -n "${GITHUB_ENV}" ]; then
-    pfx="$VCPKG_INSTALLATION_ROOT\\installed\\x64-windows"
+    for arch in arm64 x64; do
+        pfx="$VCPKG_INSTALLATION_ROOT\\installed\\$arch-windows"
+        if [ -e "$pfx" ]; then
+            break
+        fi
+    done
     origpath="$(echo $PATH | sed -e 's|:|;|g' -e 's|/c/|C:\\|g' -e 's|/|\\|g')"
     echo "PKG_CONFIG=${pfx}\\tools\\pkgconf\\pkgconf.exe" >> $GITHUB_ENV
     echo "PKG_CONFIG_PATH=${pfx}\\lib\\pkgconfig;${pfx}\\share\\pkgconfig;${PKG_CONFIG_PATH}" >> $GITHUB_ENV

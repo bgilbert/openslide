@@ -81,6 +81,7 @@ libopenslide = library(
   openslide_sources,
   version : soversion,
   c_args : ['-D_OPENSLIDE_BUILDING_DLL', '-DG_LOG_DOMAIN="OpenSlide"'],
+  name_prefix : host_machine.system() == 'windows' ? 'lib' : [],
   gnu_symbol_visibility : visibility,
   include_directories : config_h_include,
   dependencies : [

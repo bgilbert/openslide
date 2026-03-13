@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    groups:
+      pre-commit:
+        patterns: ["*"]
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: pre-commit
+    directory: /
+    groups:
+      pre-commit:
+        patterns: ["*"]
+    schedule:
+      interval: monthly

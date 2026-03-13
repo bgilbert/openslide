@@ -55,6 +55,7 @@ jobs:
           signoff: true
           title: "meson: update ${{ steps.modified.outputs.modified }}"
           body: "<!-- topic=dependencies -->"
+          labels: dependencies
           push-to-fork: ${{ steps.user.outputs.username }}/${{ github.event.repository.name }}
           delete-branch: true
           maintainer-can-modify: false

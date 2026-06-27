@@ -3,7 +3,7 @@
 set -e
 
 # Always use the upstream cache, even in forks
-GH_USERNAME=openslide
+GH_USERNAME=bgilbert
 FEED_URL="https://nuget.pkg.github.com/${GH_USERNAME}/index.json"
 
 export VCPKG_BINARY_SOURCES="clear;nuget,${FEED_URL},readwrite"

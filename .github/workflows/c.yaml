@@ -341,7 +341,7 @@ jobs:
           sleep 60
           repo="${{ github.repository }}"
           # always use upstream repo
-          repo_arg="-R openslide/${repo##*/}"
+          repo_arg="-R bgilbert/${repo##*/}"
           info=$(gh run list $repo_arg -w vcpkg-cache.yml -L 1 \
               --json databaseId,url)
           echo "Waiting for $(echo $info | jq -r .[].url)"

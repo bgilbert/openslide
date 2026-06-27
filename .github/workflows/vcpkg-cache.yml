@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   workflow_run:
     workflows: [C]
-    types: [requested]
+    types: [in_progress]
 
 permissions:
   contents: read
